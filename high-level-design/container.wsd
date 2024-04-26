@@ -1,0 +1,68 @@
+@startuml
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+!define FONTAWESOME https://raw.githubusercontent.com/tupadr3/plantuml-icon-font-sprites/master/font-awesome-5
+!include FONTAWESOME/users.puml
+
+' !define SPRITESURL https://raw.githubusercontent.com/rabelenda/cicon-plantuml-sprites/v1.0/sprites
+' !includeurl SPRITESURL/rabbitmq.puml
+
+AddElementTag("ms", $shape=EightSidedShape(), $bgColor="CornflowerBlue", $fontColor="white")
+AddElementTag("mq", $shape=RoundedBoxShape(), $bgColor="LightSalmon", $fontColor="white")
+AddElementTag("api", $bgColor="lightSkyBlue", $fontColor="white")
+AddElementTag("worker", $bgColor="green", $fontColor="white")
+
+Person(user, "Users", "Managers, engineers, etc.", $sprite="users")
+
+System_Boundary(sys, "Software Engineering Metrics"){
+    Boundary(web, "Presentation Layer"){
+        Container(web_metrics, "Metrics Web", "HTML, CSS", "The main interface that the customer interacts with metrics")
+        Container(web_backoffice, "Backoffice Web", "HTML, CSS", "Interface that the customer interacts with backoffice configuration")
+    }
+
+    Container(api_backoffice, "Backoffice API", "Python, FastAPI", "Handles all business logic", $tags="api")
+    Container(api_metrics, "Metrics API", "Python, FastAPI", "Handles all business logic", $tags="api")
+    
+    ContainerDb(db_backoffice, "Backoffice DB", "MySQL", "Stores \n backoffice data")
+    ContainerQueue(mq_raw, "Raw Data MQ", "RabbitMQ", "Stores \n backoffice events", $tags="mq")
+    ContainerQueue(mq_back, "Backoffice MQ", "RabbitMQ", "Stores \n backoffice events", $tags="mq")
+
+    Boundary(sync, "Synchronous Version"){
+        Container(ms_aggregate, "Aggregation Service", "Python, FastAPI", "Handles all business logic", $tags="ms")
+        ContainerDb(db_aggregated, "Aggregated DB", "DocumentDB", "Stores \n aggregated data")
+    }
+
+    Boundary(collection, "Collection Layer"){
+        Container(api_webhook, "Webhook API", "Python, FastAPI", "Handles all business logic", $tags="worker")
+        Container(api_polling, "Polling API", "Python, FastAPI", "Handles all business logic", $tags="worker")
+        Container(api_request, "Request API", "Python, FastAPI", "Handles all business logic", $tags="worker")
+    }
+
+    ContainerDb_Ext(db_raw, "Raw Data DB", "S3", "Stores \n raw data", $tags="aws")
+}
+
+Container_Ext(api_vendor, "Vendor", "Webhook", "Handles all business logic")
+
+Rel(user, web_metrics, "Uses", "https")
+Rel(user, web_backoffice, "Uses", "https")
+Rel(web_metrics, api_metrics, "Gets track \n data from", "https")
+Rel(api_metrics, db_aggregated, "Gets track \n data from", "https")
+Rel_R(db_aggregated, ms_aggregate, "Gets track \n data from", "https")
+
+Rel(web_backoffice, api_backoffice, "Gets track \n data from", "https")
+Rel_R(api_backoffice, db_backoffice, "Stores \n data in", "https")
+
+Rel(api_backoffice, mq_back, "Send \n events to", "https")
+Rel(ms_aggregate, mq_raw, "Gets \n events from", "https")
+
+Rel_R(mq_raw, db_raw, "Ingest", "https")
+Rel(mq_raw, api_webhook, "Gets \n events from", "https")
+Rel(mq_raw, api_polling, "Gets \n events from", "https")
+Rel(mq_raw, api_request, "Gets \n events from", "https")
+
+Rel(api_webhook, api_vendor, "Gets \n events from", "https")
+Rel(api_polling, api_vendor, "Gets \n events from", "https")
+Rel(api_request, api_vendor, "Gets \n events from", "https")
+
+Rel_U(api_request, mq_back, "Gets \n events from", "https")
+
+@enduml

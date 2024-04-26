@@ -1,0 +1,18 @@
+@startuml
+!include https://raw.githubusercontent.com/plantuml-stdlib/C4-PlantUML/master/C4_Container.puml
+!define FONTAWESOME https://raw.githubusercontent.com/tupadr3/plantuml-icon-font-sprites/master/font-awesome-5
+!include FONTAWESOME/users.puml
+
+LAYOUT_LEFT_RIGHT()
+
+Person(user, "Users", "Managers, engineers, etc.", $sprite="users")
+
+System_Boundary(sys, "Software Engineering Metrics"){
+    Container(sem, "SEM", "React", "The main interface that the customer interacts with")
+}
+
+Container_Ext(api, "Vendor", "Webhook", "Handles all business logic")
+
+Rel(user, sem, "Uses", "https")
+Rel(sem, api, "Gets track data from", "https")
+@enduml
